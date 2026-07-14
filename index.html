@@ -3,51 +3,147 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>로또 추첨기</title>
+  <title>로또 추천번호 뽑기</title>
   <style>
     :root { color-scheme: dark; font-family: "Malgun Gothic", system-ui, sans-serif; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at top, #293a78, #11172c 55%, #090b16); color: #fff; }
-    main { width: min(680px, 100%); text-align: center; padding: 42px 28px 32px; border: 1px solid #ffffff2b; border-radius: 28px; background: #ffffff12; box-shadow: 0 20px 60px #0008; backdrop-filter: blur(12px); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: radial-gradient(circle at top, #293a78, #11172c 55%, #090b16);
+      color: #fff;
+    }
+    main {
+      width: min(680px, 100%);
+      text-align: center;
+      padding: 42px 28px 32px;
+      border: 1px solid #ffffff2b;
+      border-radius: 28px;
+      background: #ffffff12;
+      box-shadow: 0 20px 60px #0008;
+      backdrop-filter: blur(12px);
+    }
     h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: -.08em; }
     p { margin: 12px 0 30px; color: #d7defe; }
     .numbers { min-height: 108px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; }
-    .ball { width: 66px; height: 66px; display: grid; place-items: center; border-radius: 50%; font-size: 1.5rem; font-weight: 800; color: #17130e; box-shadow: inset 0 -6px #0002, 0 5px 12px #0004; animation: pop .35s both; }
-    .yellow { background: #f9c941; } .blue { background: #6cc9f0; } .red { background: #f37777; } .gray { background: #d8dce3; } .green { background: #77d095; }
-    button { margin-top: 30px; border: 0; border-radius: 999px; padding: 16px 35px; background: #ffda45; color: #1c1730; font: inherit; font-size: 1.1rem; font-weight: 800; cursor: pointer; box-shadow: 0 8px 0 #b88400, 0 13px 22px #0005; transition: transform .15s, box-shadow .15s; }
-    button:hover { transform: translateY(-2px); } button:active { transform: translateY(6px); box-shadow: 0 2px 0 #b88400; }
+    .ball {
+      width: 66px;
+      height: 66px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #17130e;
+      box-shadow: inset 0 -6px #0002, 0 5px 12px #0004;
+      animation: pop .35s both;
+    }
+    .yellow { background: #f9c941; }
+    .blue { background: #6cc9f0; }
+    .red { background: #f37777; }
+    .gray { background: #d8dce3; }
+    .green { background: #77d095; }
+    button {
+      margin-top: 30px;
+      border: 0;
+      border-radius: 999px;
+      padding: 16px 35px;
+      background: #ffda45;
+      color: #1c1730;
+      font: inherit;
+      font-size: 1.1rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 0 #b88400, 0 13px 22px #0005;
+      transition: transform .15s, box-shadow .15s;
+    }
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(6px); box-shadow: 0 2px 0 #b88400; }
+    button:disabled { opacity: .7; cursor: wait; transform: none; }
     .history { margin: 34px auto 0; max-width: 500px; text-align: left; color: #d7defe; font-size: .9rem; }
-    .history strong { color: #fff; } .history ul { margin: 10px 0 0; padding: 0; list-style: none; } .history li { padding: 9px 12px; border-bottom: 1px solid #ffffff1b; }
+    .history strong { color: #fff; }
+    .history ul { margin: 10px 0 0; padding: 0; list-style: none; }
+    .history li { padding: 9px 12px; border-bottom: 1px solid #ffffff1b; }
     @keyframes pop { from { opacity: 0; transform: scale(.2) rotate(-18deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
   </style>
 </head>
 <body>
   <main>
-    <h1>🍀 로또 추첨기</h1>
-    <p>1부터 45까지, 중복 없이 행운의 번호 6개를 뽑습니다.</p>
-    <div id="numbers" class="numbers" aria-live="polite"><span>버튼을 눌러 추첨하세요</span></div>
+    <h1>로또 추천번호 뽑기</h1>
+    <p>1부터 45까지, 중복 없이 6개의 번호를 뽑고 Supabase에 저장합니다.</p>
+    <div id="numbers" class="numbers" aria-live="polite"><span>버튼을 눌러 추첨해보세요</span></div>
     <button id="draw" type="button">번호 뽑기</button>
-    <section class="history" aria-label="추첨 기록"><strong>최근 추첨 기록</strong><ul id="history"></ul></section>
+    <section class="history" aria-label="추첨 기록">
+      <strong>최근 추첨 기록</strong>
+      <ul id="history"></ul>
+    </section>
   </main>
   <script>
     const numbers = document.querySelector('#numbers');
     const history = document.querySelector('#history');
     const drawButton = document.querySelector('#draw');
+    const apiUrl = '/api/draw';
+
     const colorClass = n => n <= 10 ? 'yellow' : n <= 20 ? 'blue' : n <= 30 ? 'red' : n <= 40 ? 'gray' : 'green';
-    const draw = () => {
+
+    const renderDraw = (picked) => {
+      const sorted = [...picked].sort((a, b) => a - b);
+      numbers.innerHTML = sorted.map((n, i) => `<span class="ball ${colorClass(n)}" style="animation-delay:${i * 70}ms">${n}</span>`).join('');
+    };
+
+    const renderHistory = (items) => {
+      history.innerHTML = items.map(item => `<li>${item.numbers.join(' · ')}</li>`).join('');
+    };
+
+    const draw = async () => {
       const picked = [];
       while (picked.length < 6) {
         const n = Math.floor(Math.random() * 45) + 1;
         if (!picked.includes(n)) picked.push(n);
       }
-      picked.sort((a, b) => a - b);
-      numbers.innerHTML = picked.map((n, i) => `<span class="ball ${colorClass(n)}" style="animation-delay:${i * 70}ms">${n}</span>`).join('');
-      const item = document.createElement('li');
-      item.textContent = picked.join('  ·  ');
-      history.prepend(item);
-      if (history.children.length > 5) history.lastElementChild.remove();
+
+      renderDraw(picked);
+      drawButton.disabled = true;
+      drawButton.textContent = '저장 중...';
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numbers: picked })
+        });
+
+        if (!response.ok) {
+          throw new Error('저장 실패');
+        }
+
+        const data = await response.json();
+        renderHistory(data.items || []);
+      } catch (error) {
+        const item = document.createElement('li');
+        item.textContent = `${picked.join(' · ')} (저장 실패)`;
+        history.prepend(item);
+      } finally {
+        drawButton.disabled = false;
+        drawButton.textContent = '번호 뽑기';
+      }
     };
+
     drawButton.addEventListener('click', draw);
+
+    (async () => {
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) return;
+        const data = await response.json();
+        renderHistory(data.items || []);
+      } catch (error) {
+        history.innerHTML = '<li>기록을 불러오지 못했습니다.</li>';
+      }
+    })();
   </script>
 </body>
 </html>
